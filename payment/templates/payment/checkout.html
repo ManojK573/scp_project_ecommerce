@@ -1,0 +1,226 @@
+{% include "store/base.html" %}
+{% load static %}
+{% block content %}
+
+<style>
+    body {
+        background-color: gray;
+    }
+</style>
+
+<body>
+    <br>
+    <div class="container bg-white shadow-md p-5" style="width:66%; border-radius:20px;">
+        <form id="form" onsubmit="event.preventDefault();">
+            <h3 class="text-center"> <i class="fa fa-chevron-circle-right" aria-hidden="true"></i> &nbsp; Complete your order </h3>
+            <hr>
+            <br>
+            <div class="row">
+                <div class="col-lg-5">
+                    <h5> Please enter your details </h5>
+                    <div class="form-field">
+                        <input class="form-control validate" id="name" type="text" placeholder="Full name*"
+                            autocomplete="off" value="{{shipping.full_name}}" required>
+                    </div>
+                    <br>
+
+                    <div class="form-field">
+                        <input class="form-control validate" id="email" type="email" placeholder="Email address*"
+                            autocomplete="off" value="{{shipping.email}}" required>
+                    </div>
+                    <br>
+                    <div class="form-field">
+                        <input class="form-control validate" id="address1" type="text" placeholder="Address 1*"
+                            autocomplete="off" value="{{shipping.address1}}" required>
+                    </div>
+                    <br>
+                    <div class="form-field">
+                        <input class="form-control validate" id="address2" type="text" placeholder="Address 2*"
+                            autocomplete="off" value="{{shipping.address2}}" required>
+                    </div>
+                    <br>
+                    <div class="form-field">
+                        <input class="form-control validate" id="city" type="text" placeholder="City*"
+                            autocomplete="off" value="{{shipping.city}}" required>
+                    </div>
+                    <br>
+                    <div class="form-field">
+                        <input class="form-control" id="state" type="text" placeholder="State (Optional)"
+                            autocomplete="off" value="{{shipping.state}}">
+                    </div>
+                    <br>
+                    <div class="form-field">
+                        <input class="form-control" id="zipcode" type="text" placeholder="Zip code (Optional)"
+                            autocomplete="off" value="{{shipping.zipcode}}">
+                    </div>
+                </div>
+                <div class="col-lg-1"></div>
+                <div class="col-lg-6">
+                    <div class="row">
+                        <h6 class="col-6">Total Price : </h6>
+                        <p class="col-6">$ {{cart.get_total}}</p>
+                        <h6 class="col-6">Discount : </h6>
+                        <p class="col-6" id="discount">$ 0</p>
+                        <h6 class="col-6 fw-bold">Grand Total : </h6>
+                        <p class="col-6 fw-bold" id="grandtotal">$ {{cart.get_total}}</p>
+                    </div>
+                    <div class="row form-field">
+                            <input class="col-6" id="coupon" type="text" placeholder="Enter Coupon Code*" autocomplete="off" value="">
+                            <div class="col-1" ></div>
+                            <button class="col-4 btn primary" style="background-color: rgb(57, 184, 25); color: white;" id="applycoupon" type="button">Apply Coupon</button>
+                    </div>
+                    <div id="errorlable" hidden="true" class="row form-field">
+                        <h5 style="color: red;">Unable to apply coupon. Please try again.</h5>
+                    </div>
+                    <br />
+                    <div id="paypal-button-container"></div>
+                    <script src="https://www.paypal.com/sdk/js?client-id=test&currency=USD&intent=capture&enable-funding=venmo"
+                        data-sdk-integration-source="integrationbuilder"></script>
+                </div>
+            </div>
+        </form>
+    </div>
+    <br>
+</body>
+<!-- Ajax integration -->
+<script>
+    // Total price
+var total_price = '{{cart.get_total}}';
+var grand_total = total_price;
+
+document.getElementById('applycoupon').addEventListener('click',applycoupon);
+function applycoupon(){
+    const coupon = document.getElementById('coupon').value;
+    if(coupon !== ''){
+    fetch('https://9vcepgxhlb.execute-api.us-east-1.amazonaws.com/Testing?coupon='+coupon)
+    .then(response => response.json())
+    .then(res => {
+        if(res.result === 'success'){
+            const amount = parseInt(res.amount);
+            document.getElementById('errorlable').hidden = true;
+            document.getElementById('discount').innerText =`$ ${amount}`;
+            document.getElementById('grandtotal').innerHTML =`$ ${(total_price - amount).toFixed(2)}`;
+            grand_total = (total_price - amount).toFixed(2);
+        } else {
+            document.getElementById('errorlable').hidden = false;
+        }
+    });
+}
+}
+
+    // PayPal Script
+    const paypalButtonsComponent = paypal.Buttons({
+        // optional styling for buttons
+        // https://developer.paypal.com/docs/checkout/standard/customize/buttons-style-guide/
+        style: {
+            color: "blue",
+            shape: "pill",
+            layout: "vertical",
+        },
+
+        onInit: function (data, actions) {
+            actions.disable();
+
+            // Complete order - NO SHIPPING
+            document.querySelectorAll('.validate').forEach(item => {
+                item.addEventListener('keyup', event => {
+                    //  The required fields are filled out
+                    var order_verified = 'Yes';
+                    function checkInputs() {
+                        $(':input[required]').each(function () {
+                            if ($(this).val() == '') {
+                                // The required fields are empty
+                                return order_verified = 'No';
+                            }
+                        });
+                        return order_verified;
+                    }
+                    var isOrderVerified = checkInputs()
+                    if (isOrderVerified === 'Yes') {
+                        actions.enable();
+                    }
+                    else {
+                        actions.disable();
+                    }
+                });
+            });
+            // Complete order - WITH SHIPPING
+            //  The required fields are filled out
+            var order_verified = 'Yes';
+            function checkInputs() {
+                $(':input[required]').each(function () {
+                    if ($(this).val() == '') {
+                        // The required fields are empty
+                        return order_verified = 'No';
+                    }
+                });
+                return order_verified;
+            }
+            var isOrderVerified = checkInputs()
+            if (isOrderVerified === 'Yes') {
+                actions.enable();
+            }
+            else {
+                actions.disable();
+            }
+        },
+        // set up the transaction
+        createOrder: (data, actions) => {
+            // pass in any options from the v2 orders create call:
+            // https://developer.paypal.com/api/orders/v2/#orders-create-request-body
+            const createOrderPayload = {
+                purchase_units: [
+                    {
+                        amount: {
+                            value: grand_total
+                        }
+                    }
+                ]
+            };
+
+            return actions.order.create(createOrderPayload);
+        },
+        // finalize the transaction
+        onApprove: (data, actions) => {
+            const captureOrderHandler = (details) => {
+                const payerName = details.payer.name.given_name;
+                console.log('Transaction completed');
+                // Ajax functionality
+                $.ajax({
+                    type: 'POST',
+                    url: '{% url "complete-order" %}',
+                    data: {
+                        name: $('#name').val(),
+                        email: $('#email').val(),
+                        address1: $('#address1').val(),
+                        address2: $('#address2').val(),
+                        city: $('#city').val(),
+                        state: $('#state').val(),
+                        zipcode: $('#zipcode').val(),
+                        paidamount: grand_total,
+                        csrfmiddlewaretoken: "{{csrf_token}}",
+                        action: 'post'
+                    },
+                    success: function (json) {
+                        //console.log(json)
+                        window.location.replace("{% url 'payment-success' %}");
+                    },
+                    error: function (xhr, errmsg, err) {
+                        window.location.replace("{% url 'payment-failed' %}");
+                    }
+                });
+            };
+            return actions.order.capture().then(captureOrderHandler);
+        },
+        // handle unrecoverable errors
+        onError: (err) => {
+            console.error('An error prevented the buyer from checking out with PayPal');
+        }
+    });
+    paypalButtonsComponent
+        .render("#paypal-button-container")
+        .catch((err) => {
+            console.error('PayPal Buttons failed to render');
+        });
+</script>
+{% endblock %}
